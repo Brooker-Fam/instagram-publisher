@@ -2,8 +2,21 @@ import time
 import uuid
 from pathlib import Path
 
-from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text, create_engine, event
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+    event,
+    inspect,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
 
 def new_id() -> str:
@@ -14,16 +27,51 @@ class Base(DeclarativeBase):
     pass
 
 
+class UnifiedGrant(Base):
+    __tablename__ = "unified_grants"
+    __table_args__ = (UniqueConstraint("issuer_app_id", "system_user_id", "business_id"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    issuer_app_id: Mapped[str] = mapped_column(String(80))
+    system_user_id: Mapped[str] = mapped_column(String(80))
+    business_id: Mapped[str] = mapped_column(String(80))
+    token_ciphertext: Mapped[str] = mapped_column(Text)
+    token_expires_at: Mapped[float | None] = mapped_column(Float)
+    data_access_expires_at: Mapped[float | None] = mapped_column(Float)
+    revoked_at: Mapped[float | None] = mapped_column(Float)
+    connected_at: Mapped[float] = mapped_column(Float, default=time.time)
+
+
+def legacy_refresh_time(context):
+    return None if context.get_current_parameters().get("auth_provider") == "UNIFIED" else time.time()
+
+
 class Account(Base):
     __tablename__ = "accounts"
+    __table_args__ = (
+        UniqueConstraint("auth_provider", "issuer_app_id", "instagram_user_id"),
+        UniqueConstraint("auth_provider", "issuer_app_id", "app_scoped_id"),
+        CheckConstraint(
+            "(auth_provider = 'INSTAGRAM' AND grant_id IS NULL AND account_type IS NOT NULL "
+            "AND token_ciphertext IS NOT NULL AND token_expires_at IS NOT NULL "
+            "AND token_refreshed_at IS NOT NULL) OR "
+            "(auth_provider = 'UNIFIED' AND grant_id IS NOT NULL AND app_scoped_id IS NULL "
+            "AND account_type IS NULL AND token_ciphertext IS NULL AND token_expires_at IS NULL "
+            "AND token_refreshed_at IS NULL)",
+            name="account_credentials_match_provider",
+        ),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    instagram_user_id: Mapped[str] = mapped_column(String(80), unique=True)
-    app_scoped_id: Mapped[str | None] = mapped_column(String(80), unique=True)
+    auth_provider: Mapped[str] = mapped_column(String(20), default="INSTAGRAM")
+    issuer_app_id: Mapped[str] = mapped_column(String(80), default="")
+    grant_id: Mapped[str | None] = mapped_column(ForeignKey("unified_grants.id"))
+    unified_grant: Mapped[UnifiedGrant | None] = relationship(lazy="joined")
+    instagram_user_id: Mapped[str] = mapped_column(String(80))
+    app_scoped_id: Mapped[str | None] = mapped_column(String(80))
     username: Mapped[str] = mapped_column(String(200))
-    account_type: Mapped[str] = mapped_column(String(40))
-    token_ciphertext: Mapped[str] = mapped_column(Text)
-    token_expires_at: Mapped[float] = mapped_column(Float)
-    token_refreshed_at: Mapped[float] = mapped_column(Float, default=time.time)
+    account_type: Mapped[str | None] = mapped_column(String(40))
+    token_ciphertext: Mapped[str | None] = mapped_column(Text)
+    token_expires_at: Mapped[float | None] = mapped_column(Float)
+    token_refreshed_at: Mapped[float | None] = mapped_column(Float, default=legacy_refresh_time)
     created_at: Mapped[float] = mapped_column(Float, default=time.time)
     connected_at: Mapped[float] = mapped_column(Float, default=time.time)
 
@@ -42,7 +90,6 @@ class CallbackReceipt(Base):
     confirmation_code: Mapped[str] = mapped_column(String(100), unique=True)
     status: Mapped[str] = mapped_column(String(30), default="completed")
     created_at: Mapped[float] = mapped_column(Float, default=time.time)
-
 
 
 class Asset(Base):
@@ -107,7 +154,9 @@ class WorkerHeartbeat(Base):
 
 def make_session_factory(database_url: str):
     if not database_url.startswith("sqlite:"):
-        raise ValueError("This release supports SQLite on one host; use the supplied persistent-volume deployment")
+        raise ValueError(
+            "This release supports SQLite on one host; use the supplied persistent-volume deployment"
+        )
     if database_url.startswith("sqlite:///") and database_url != "sqlite:///:memory:":
         Path(database_url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(database_url, connect_args={"check_same_thread": False, "timeout": 30})
@@ -120,6 +169,12 @@ def make_session_factory(database_url: str):
         cursor.execute("PRAGMA busy_timeout=30000")
         cursor.close()
 
+    inspector = inspect(engine)
+    if inspector.has_table("accounts") and "auth_provider" not in {
+        column["name"] for column in inspector.get_columns("accounts")
+    }:
+        engine.dispose()
+        raise RuntimeError("Stop the API and worker, then run python -m instagram_publisher.migrations")
     Base.metadata.create_all(engine)
     return sessionmaker(engine, expire_on_commit=False)
 

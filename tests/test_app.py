@@ -21,7 +21,9 @@ def image_bytes(size=(800, 1000)):
 
 def upload(api, *, kind="image", size=(800, 1000)):
     response = api.client.post(
-        "/api/assets", headers=api.headers, data={"kind": kind},
+        "/api/assets",
+        headers=api.headers,
+        data={"kind": kind},
         files={"file": ("../../untrusted.png", image_bytes(size), "image/png")},
     )
     assert response.status_code == 201, response.text
@@ -80,8 +82,12 @@ def test_public_health_and_security_headers_do_not_leak_keys(api_bundle):
     assert response.headers["strict-transport-security"] == "max-age=31536000"
     response = api.client.get("/api/status", headers=api.headers)
     assert response.json()["instagram_configured"] is True
-    for secret in [api.settings.admin_api_key, api.settings.token_encryption_key,
-                   api.settings.media_signing_key, api.settings.meta_app_secret]:
+    for secret in [
+        api.settings.admin_api_key,
+        api.settings.token_encryption_key,
+        api.settings.media_signing_key,
+        api.settings.meta_app_secret,
+    ]:
         assert secret.get_secret_value() not in response.text
 
 
@@ -128,7 +134,9 @@ def test_valid_signature_cannot_be_reused_for_another_asset(api_bundle):
 def test_invalid_upload_leaves_no_database_record_or_file(api_bundle):
     api = api_bundle
     response = api.client.post(
-        "/api/assets", headers=api.headers, data={"kind": "image"},
+        "/api/assets",
+        headers=api.headers,
+        data={"kind": "image"},
         files={"file": ("image.jpg", b"not an image", "image/jpeg")},
     )
     assert response.status_code == 422
@@ -138,7 +146,9 @@ def test_invalid_upload_leaves_no_database_record_or_file(api_bundle):
 
 def test_declared_oversize_request_rejected_before_body_processing(api_bundle):
     response = api_bundle.client.post(
-        "/api/assets", headers=api_bundle.headers | {"Content-Length": "102000001"}, content=b"x",
+        "/api/assets",
+        headers=api_bundle.headers | {"Content-Length": "102000001"},
+        content=b"x",
     )
     assert response.status_code == 413
 
@@ -178,14 +188,25 @@ def test_edit_advances_revision_and_stale_approval_is_rejected(api_bundle):
     api = api_bundle
     post, payload = draft(api)
     edit = api.client.put(
-        f"/api/posts/{post['id']}", headers=api.headers,
+        f"/api/posts/{post['id']}",
+        headers=api.headers,
         json=payload | {"revision": 1, "caption": "Updated copy."},
     )
     assert edit.status_code == 200
     assert edit.json()["revision"] == 2
     assert edit.json()["caption"] == "Updated copy."
-    assert api.client.post(f"/api/posts/{post['id']}/approve", headers=api.headers, json={"revision": 1}).status_code == 409
-    assert api.client.put(f"/api/posts/{post['id']}", headers=api.headers, json=payload | {"revision": 1}).status_code == 409
+    assert (
+        api.client.post(
+            f"/api/posts/{post['id']}/approve", headers=api.headers, json={"revision": 1}
+        ).status_code
+        == 409
+    )
+    assert (
+        api.client.put(
+            f"/api/posts/{post['id']}", headers=api.headers, json=payload | {"revision": 1}
+        ).status_code
+        == 409
+    )
     review = api.client.get(f"/api/posts/{post['id']}/review", headers=api.headers).json()
     assert review["approval"]["body"] == {"revision": 2}
 
@@ -237,23 +258,27 @@ def test_failed_prepublication_post_returns_to_unapproved_new_revision(api_bundl
     assert retried["error"] is None
 
 
-@pytest.mark.parametrize("change", [
-    {"kind": "REEL"},
-    {"kind": "STORY", "caption": ""},
-    {"kind": "CAROUSEL"},
-    {"kind": "UNSUPPORTED"},
-    {"asset_ids": []},
-    {"asset_ids": ["missing-id"]},
-    {"account_id": "missing-account"},
-    {"caption": "x" * 2201},
-    {"scheduled_at": "2027-01-01T12:00:00"},
-    {"unrecognized_field": "bad"},
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"kind": "REEL"},
+        {"kind": "STORY", "caption": ""},
+        {"kind": "CAROUSEL"},
+        {"kind": "UNSUPPORTED"},
+        {"asset_ids": []},
+        {"asset_ids": ["missing-id"]},
+        {"account_id": "missing-account"},
+        {"caption": "x" * 2201},
+        {"scheduled_at": "2027-01-01T12:00:00"},
+        {"unrecognized_field": "bad"},
+    ],
+)
 def test_invalid_draft_schema_or_media_rejected(api_bundle, change):
     api = api_bundle
     asset = upload(api)
     response = api.client.post(
-        "/api/posts", headers=api.headers,
+        "/api/posts",
+        headers=api.headers,
         json={"kind": "IMAGE", "asset_ids": [asset["id"]], "caption": "Draft"} | change,
     )
     assert response.status_code == 422
@@ -263,7 +288,8 @@ def test_invalid_draft_schema_or_media_rejected(api_bundle, change):
 def test_duplicate_carousel_asset_rejected(api_bundle):
     asset = upload(api_bundle)
     response = api_bundle.client.post(
-        "/api/posts", headers=api_bundle.headers,
+        "/api/posts",
+        headers=api_bundle.headers,
         json={"kind": "CAROUSEL", "asset_ids": [asset["id"], asset["id"]]},
     )
     assert response.status_code == 422
@@ -299,7 +325,10 @@ def test_oauth_state_is_hashed_single_use_and_tokens_are_encrypted(api_bundle):
         account = session.scalar(select(Account))
         assert account.token_ciphertext != TEST_META_TOKEN
         assert TEST_META_TOKEN not in account.token_ciphertext
-        assert decrypt_token(account.token_ciphertext, api.settings.token_encryption_key.get_secret_value()) == TEST_META_TOKEN
+        assert (
+            decrypt_token(account.token_ciphertext, api.settings.token_encryption_key.get_secret_value())
+            == TEST_META_TOKEN
+        )
         assert session.get(OAuthState, state_digest(state)).consumed_at is not None
     for route in ["/api/accounts", "/api/status", "/api/events"]:
         response = api.client.get(route, headers=api.headers)
@@ -312,11 +341,16 @@ def test_oauth_state_is_hashed_single_use_and_tokens_are_encrypted(api_bundle):
 def test_oauth_missing_random_or_expired_state_never_exchanges_code(api_bundle):
     api = api_bundle
     assert api.client.get("/auth/instagram/callback", params={"code": "code"}).status_code == 422
-    assert api.client.get("/auth/instagram/callback", params={"code": "code", "state": "invalid"}).status_code == 400
+    assert (
+        api.client.get("/auth/instagram/callback", params={"code": "code", "state": "invalid"}).status_code
+        == 400
+    )
     state = begin_connection(api)
     with api.sessions.begin() as session:
         session.get(OAuthState, state_digest(state)).expires_at = time.time() - 1
-    assert api.client.get("/auth/instagram/callback", params={"code": "code", "state": state}).status_code == 400
+    assert (
+        api.client.get("/auth/instagram/callback", params={"code": "code", "state": state}).status_code == 400
+    )
     assert api.provider.exchanged_codes == []
 
 
@@ -366,7 +400,10 @@ def test_refresh_waits_24_hours_then_reencrypts_new_token(api_bundle):
     assert TEST_REFRESHED_TOKEN not in response.text
     with api.sessions() as session:
         row = session.get(Account, account["id"])
-        assert decrypt_token(row.token_ciphertext, api.settings.token_encryption_key.get_secret_value()) == TEST_REFRESHED_TOKEN
+        assert (
+            decrypt_token(row.token_ciphertext, api.settings.token_encryption_key.get_secret_value())
+            == TEST_REFRESHED_TOKEN
+        )
         assert row.token_refreshed_at > time.time() - 5
 
 

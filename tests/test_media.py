@@ -65,16 +65,19 @@ def test_large_images_are_downscaled_without_crop(tmp_path):
     assert (info["width"], info["height"]) == (1440, 1800)
 
 
-@pytest.mark.parametrize("data,kind", [
-    (b"", "image"),
-    (b"<svg>invalid</svg>", "image"),
-    (picture(size=(200, 250)), "image"),
-    (picture(size=(800, 1400)), "image"),
-    (picture(size=(800, 800)), "story"),
-    (picture(), "reel"),
-    (picture(fmt="GIF"), "image"),
-    (picture(), "unknown"),
-])
+@pytest.mark.parametrize(
+    "data,kind",
+    [
+        (b"", "image"),
+        (b"<svg>invalid</svg>", "image"),
+        (picture(size=(200, 250)), "image"),
+        (picture(size=(800, 1400)), "image"),
+        (picture(size=(800, 800)), "story"),
+        (picture(), "reel"),
+        (picture(fmt="GIF"), "image"),
+        (picture(), "unknown"),
+    ],
+)
 def test_invalid_media_rejected_without_persisted_file(tmp_path, data, kind):
     with pytest.raises(MediaValidationError):
         store_upload(data, "claims-to-be.jpg", tmp_path, kind)
@@ -110,8 +113,11 @@ def test_cover_accepts_portrait_image_and_rejects_video_or_feed_ratio(tmp_path):
 def test_animated_webp_rejected(tmp_path):
     output = io.BytesIO()
     Image.new("RGB", (800, 1000), "red").save(
-        output, format="WEBP", save_all=True,
-        append_images=[Image.new("RGB", (800, 1000), "blue")], duration=100,
+        output,
+        format="WEBP",
+        save_all=True,
+        append_images=[Image.new("RGB", (800, 1000), "blue")],
+        duration=100,
     )
     with pytest.raises(MediaValidationError, match="Animated"):
         store_upload(output.getvalue(), "animated.webp", tmp_path, "image")
@@ -119,12 +125,19 @@ def test_animated_webp_rejected(tmp_path):
 
 def video_probe(**overrides):
     video = {
-        "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p",
-        "width": 1080, "height": 1920, "avg_frame_rate": "30000/1001",
+        "codec_type": "video",
+        "codec_name": "h264",
+        "pix_fmt": "yuv420p",
+        "width": 1080,
+        "height": 1920,
+        "avg_frame_rate": "30000/1001",
     }
     video.update(overrides)
     return {
-        "streams": [video, {"codec_type": "audio", "codec_name": "aac", "channels": 2, "sample_rate": "48000"}],
+        "streams": [
+            video,
+            {"codec_type": "audio", "codec_name": "aac", "channels": 2, "sample_rate": "48000"},
+        ],
         "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2", "duration": "12.5"},
     }
 
@@ -143,32 +156,39 @@ MDAT = mp4_box(b"mdat", b"mocked media")
 MP4 = FTYP + MOOV + MDAT
 
 
-@pytest.mark.parametrize("data", [
-    MP4,
-    FTYP + mp4_box(b"free", b"padding") + MOOV + MDAT,
-    FTYP + mp4_box(b"moov", b"metadata", extended=True) + mp4_box(b"mdat", b"media", extended=True),
-    FTYP + MOOV + mp4_box(b"mdat", b"media", to_eof=True),
-])
+@pytest.mark.parametrize(
+    "data",
+    [
+        MP4,
+        FTYP + mp4_box(b"free", b"padding") + MOOV + MDAT,
+        FTYP + mp4_box(b"moov", b"metadata", extended=True) + mp4_box(b"mdat", b"media", extended=True),
+        FTYP + MOOV + mp4_box(b"mdat", b"media", to_eof=True),
+    ],
+)
 def test_fast_start_parser_accepts_regular_extended_and_eof_boxes(data):
     _require_fast_start(data)
 
 
-@pytest.mark.parametrize("data", [
-    FTYP + MDAT + MOOV,
-    FTYP + mp4_box(b"mdat", b"moov text inside media is not a movie box"),
-    FTYP + MOOV,
-    FTYP + MOOV + MOOV + MDAT,
-    FTYP + MOOV + mp4_box(b"moof", b"fragment") + MDAT,
-    MP4 + b"bad",
-    FTYP + (1).to_bytes(4, "big") + b"moov",
-    FTYP + (1).to_bytes(4, "big") + b"moov" + (7).to_bytes(8, "big"),
-    FTYP + (4).to_bytes(4, "big") + b"moov",
-    FTYP + (999999).to_bytes(4, "big") + b"moov",
-    FTYP + mp4_box(b"free") * 4096 + MOOV + MDAT,
-])
+@pytest.mark.parametrize(
+    "data",
+    [
+        FTYP + MDAT + MOOV,
+        FTYP + mp4_box(b"mdat", b"moov text inside media is not a movie box"),
+        FTYP + MOOV,
+        FTYP + MOOV + MOOV + MDAT,
+        FTYP + MOOV + mp4_box(b"moof", b"fragment") + MDAT,
+        MP4 + b"bad",
+        FTYP + (1).to_bytes(4, "big") + b"moov",
+        FTYP + (1).to_bytes(4, "big") + b"moov" + (7).to_bytes(8, "big"),
+        FTYP + (4).to_bytes(4, "big") + b"moov",
+        FTYP + (999999).to_bytes(4, "big") + b"moov",
+        FTYP + mp4_box(b"free") * 4096 + MOOV + MDAT,
+    ],
+)
 def test_fast_start_parser_rejects_bad_order_and_malformed_boxes_before_probe(tmp_path, monkeypatch, data):
     def forbidden(*args, **kwargs):
         raise AssertionError("Invalid atom structure must be rejected before spawning ffprobe")
+
     monkeypatch.setattr("instagram_publisher.media.subprocess.run", forbidden)
     with pytest.raises(MediaValidationError):
         store_upload(data, "reel.mp4", tmp_path, "reel")
@@ -184,6 +204,7 @@ def mock_probe(monkeypatch, probe):
         assert Path(args[-1]).read_bytes() == MP4
         kwargs["stdout"].write(json.dumps(probe).encode())
         return SimpleNamespace(returncode=0)
+
     monkeypatch.setattr("instagram_publisher.media.subprocess.run", run)
 
 
@@ -195,16 +216,19 @@ def test_valid_mp4_persisted_only_after_inspection(tmp_path, monkeypatch):
     assert (tmp_path / info["storage_key"]).read_bytes() == MP4
 
 
-@pytest.mark.parametrize("changes", [
-    {"codec_name": "hevc"},
-    {"pix_fmt": "yuv420p10le"},
-    {"width": 1920, "height": 1080},
-    {"width": 0},
-    {"avg_frame_rate": "120/1"},
-    {"avg_frame_rate": "0/0"},
-    {"tags": {"rotate": "90"}},
-    {"side_data_list": [{"rotation": -90}]},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"codec_name": "hevc"},
+        {"pix_fmt": "yuv420p10le"},
+        {"width": 1920, "height": 1080},
+        {"width": 0},
+        {"avg_frame_rate": "120/1"},
+        {"avg_frame_rate": "0/0"},
+        {"tags": {"rotate": "90"}},
+        {"side_data_list": [{"rotation": -90}]},
+    ],
+)
 def test_invalid_video_properties_rejected(tmp_path, monkeypatch, changes):
     mock_probe(monkeypatch, video_probe(**changes))
     with pytest.raises(MediaValidationError):
@@ -231,6 +255,7 @@ def test_infinite_duration_rejected(tmp_path, monkeypatch):
 def test_missing_ffprobe_is_actionable(tmp_path, monkeypatch):
     def missing(*args, **kwargs):
         raise FileNotFoundError
+
     monkeypatch.setattr("instagram_publisher.media.subprocess.run", missing)
     with pytest.raises(MediaValidationError, match="install ffmpeg"):
         store_upload(MP4, "video.mp4", tmp_path, "reel")
@@ -238,8 +263,10 @@ def test_missing_ffprobe_is_actionable(tmp_path, monkeypatch):
 
 def test_ffprobe_timeout_is_bounded(tmp_path, monkeypatch):
     import subprocess
+
     def timeout(*args, **kwargs):
         raise subprocess.TimeoutExpired("ffprobe", 20)
+
     monkeypatch.setattr("instagram_publisher.media.subprocess.run", timeout)
     with pytest.raises(MediaValidationError, match="time limit"):
         store_upload(MP4, "video.mp4", tmp_path, "reel")

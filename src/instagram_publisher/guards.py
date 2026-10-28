@@ -21,13 +21,18 @@ class RequestGuard:
             auth = headers.get(b"authorization", b"").decode("latin-1")
             scheme, _, value = auth.partition(" ")
             if scheme.lower() != "bearer" or not valid_admin_key(value, self.admin_key):
-                response = JSONResponse({"detail": "A valid admin Bearer token is required"}, status_code=401,
-                                        headers={"WWW-Authenticate": "Bearer", "Cache-Control": "no-store"})
+                response = JSONResponse(
+                    {"detail": "A valid admin Bearer token is required"},
+                    status_code=401,
+                    headers={"WWW-Authenticate": "Bearer", "Cache-Control": "no-store"},
+                )
                 return await response(scope, receive, send)
         limit = self.upload_limit if path == "/api/assets" else 1_000_000
         length = headers.get(b"content-length", b"")
         if length and (not length.isdigit() or int(length) > limit):
-            return await JSONResponse({"detail": "Request body exceeds the upload limit"}, status_code=413)(scope, receive, send)
+            return await JSONResponse({"detail": "Request body exceeds the upload limit"}, status_code=413)(
+                scope, receive, send
+            )
         consumed = 0
 
         async def bounded_receive():

@@ -12,8 +12,9 @@ OAuth connection actions, when configured, still contact Meta.
 
 ## What's included
 
-- Instagram Login, encrypted account tokens, automatic token refresh, and verified
-  deauthorization/data-deletion callbacks.
+- Unified Login dashboard-token import for new Meta apps, with encrypted credentials
+  and exact-account selection. Existing Instagram Login connections retain automatic
+  token refresh and verified deauthorization/data-deletion callbacks.
 - Single-image feed posts, image carousels of 2–10 items, Reels with optional covers,
   and image/video Stories. Single-image posts support alt text.
 - JPEG/PNG/WebP image preparation into metadata-stripped JPEGs. MP4 validation requires
@@ -85,7 +86,7 @@ python -m instagram_publisher.cli approve POST_ID --revision N
 python -m instagram_publisher.cli posts
 ```
 
-Other commands include `accounts`, `connect`, `cancel`, `retry`, `refresh`, and `events`.
+Other commands include `accounts`, `import-unified`, `connect`, `cancel`, `retry`, `refresh`, and `events`.
 Use `--help` for arguments. `--base-url` overrides the configured `PUBLIC_BASE_URL`.
 Remote CLI clients only need `ADMIN_API_KEY` and `PUBLIC_BASE_URL`; keep Meta secrets
 and the token encryption key on the server.
@@ -97,10 +98,14 @@ Upload kinds are `image`, `story`, `cover`, and `reel`. Draft request bodies fol
 The implementation is ready for account setup; building it does not create a Meta app,
 grant permissions, or complete Instagram login. To go live you still need:
 
-1. An Instagram professional account; use **Business** for this release's Story flow.
-2. A Meta app configured for Instagram Login with the basic and publishing permissions.
+1. An Instagram professional account. Unified connections support feed posts and Reels;
+   Stories remain unavailable when Meta does not provide the account subtype.
+2. A Meta app configured for Unified Login, owned by a business portfolio. Existing apps
+   that already have Instagram Login can keep that connection method.
 3. Public HTTPS hosting with persistent storage and a continuously running worker.
-4. Your app ID/secret, configured OAuth/lifecycle callbacks, and the account owner's login.
+4. The appropriate app ID/secret and an authorized account connection. New apps use a
+   dashboard-generated Unified token imported through the CLI's hidden prompt; the
+   service does not yet implement Unified browser OAuth or automatic token renewal.
 
 Follow [Meta setup](docs/meta-setup.md) for exact permissions, callback URLs, access
 levels, and token handling. Start the live deployment with its own database/volume,
@@ -119,8 +124,8 @@ python scripts/smoke.py
 Compose runs the API and worker as non-root processes with shared persistent `/data`
 storage. It binds to `127.0.0.1:8000`; configure your own HTTPS reverse proxy for a live
 deployment. See [deployment](docs/deployment.md) for proxy, secrets, and storage setup.
-SQLite is for a single host and one worker. This initial release creates its schema
-on startup and does not yet provide versioned database migrations.
+SQLite is for a single host and one worker. Fresh databases are initialized on startup.
+Existing databases require the offline migration described in [deployment](docs/deployment.md).
 
 ## Verification and operations
 

@@ -6,21 +6,62 @@ are separate from building the repository.
 
 ## What you need
 
-- A Meta developer account and an app configured for **Instagram API with Instagram Login**.
-- Access to the professional Instagram account you want to publish to. Use a **Business** account for
-  this project's feed, Reel, and Story workflow; API support can differ by account type.
+- A Meta developer account and an app configured for **Instagram API with Unified Login**.
+- Access to the professional Instagram account you want to publish to.
 - A stable HTTPS hostname for this service, for example `https://publisher.example.com`.
-- The Instagram app ID and secret from the Meta app dashboard. Store the secret in the
+- The appropriate app ID and secret from the Meta app dashboard. Store the secret in the
   deployment's secret settings or private `.env`, never in source control.
 
-This integration uses Instagram Login directly. It does not require the Facebook Login
-route or assume that a Facebook Page is linked.
+Meta's [migration guide](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/migration-guide)
+states that newly created apps cannot set up Instagram Login. Use Unified Login for a
+new app. Existing apps with Instagram Login can keep the legacy flow below. These
+providers use different credentials, account identifiers, API hosts, and token lifecycles.
 
-## 1. Create and configure the Meta app
+## New apps: Unified Login
 
-1. Open [Meta for Developers](https://developers.facebook.com/apps/) and create an app
-   with the Instagram use case. Meta's dashboard wording can change; choose the setup
-   for **Instagram API with Instagram Login**.
+1. Create a Meta app with the Instagram use case and connect it to a business portfolio
+   you control. Portfolio administrators can manage the app. The Instagram product's
+   **API setup with Unified login** becomes available once the app has portfolio ownership.
+2. Create a compatible login configuration and inspect its permissions. Keep
+   `instagram_basic` and `instagram_content_publish`. Meta also requires
+   `instagram_manage_messages` in this configuration. Remove optional advertising and
+   comment permissions if the app does not need them. This publisher does not use messages.
+3. Under **Generate access tokens**, add the intended Instagram account as an Instagram
+   Tester and accept its invitation. Complete Meta's account authorization for that
+   account. Follow any prompt to make the account public and professional.
+4. Generate the token in Meta's dashboard. Store your Meta app ID and secret as
+   `META_UNIFIED_APP_ID` and `META_UNIFIED_APP_SECRET` on the publisher server.
+5. Run this command in an interactive terminal and enter the token at its hidden prompt:
+
+   ```sh
+   python -m instagram_publisher.cli import-unified --username YOUR_INSTAGRAM_USERNAME
+   python -m instagram_publisher.cli accounts
+   ```
+
+   Do not put the token in command arguments, shell history, screenshots, or a tracked
+   file. The CLI accepts HTTPS remote servers or local HTTP only. It refuses to fall
+   back to visible token input.
+
+The import verifies the token's app, permissions, validity, and expiry with Meta, then
+requires an exact username match among its assigned Instagram accounts. It stores the
+encrypted system-user token separately from the Instagram publishing asset. Connecting
+an account does not approve or publish a draft.
+
+This release supports dashboard-token import for Unified Login. It does not implement
+Unified browser OAuth, automated system-user token renewal, or Unified lifecycle
+callbacks. The `connect` and `refresh` CLI commands and `/auth/instagram/*` callbacks
+remain specific to legacy Instagram Login. Do not register those callbacks for a
+Unified app or pass its token through the legacy refresh endpoint.
+
+Unified account subtype remains unknown because the current documented account
+response does not provide it. Single-image feed posts, carousels, and Reels are
+supported; Stories are blocked until eligibility can be verified. Follow the app
+dashboard's access and review requirements before onboarding accounts beyond your own.
+
+## Existing apps: Instagram Login
+
+1. Open your existing app in [Meta for Developers](https://developers.facebook.com/apps/)
+   and its **Instagram API with Instagram Login** setup. This option is unavailable for new apps.
 2. Add these permissions to that setup:
    - `instagram_business_basic`
    - `instagram_business_content_publish`
@@ -56,7 +97,7 @@ and Meta may require App Review and business verification. Check the dashboard's
 requirements for this app rather than treating development access as approval to onboard
 unrelated customers.
 
-## 2. Configure the deployed service
+## Configure the deployed service
 
 Create the private environment file once:
 
@@ -71,13 +112,15 @@ Set the following values in the deployment configuration:
 PUBLISHER_ENV=production
 PUBLISHER_MODE=live
 PUBLIC_BASE_URL=https://YOUR-PUBLISHER-HOST
-META_APP_ID=YOUR_INSTAGRAM_APP_ID
-META_APP_SECRET=YOUR_INSTAGRAM_APP_SECRET
+META_UNIFIED_APP_ID=YOUR_META_APP_ID
+META_UNIFIED_APP_SECRET=YOUR_META_APP_SECRET
 META_API_VERSION=v26.0
 ```
 
-The callback is `PUBLIC_BASE_URL` plus `/auth/instagram/callback`. The version is
-configurable so Meta version upgrades can be tested deliberately.
+For legacy Instagram Login, set `META_APP_ID` and `META_APP_SECRET` to its
+Instagram-specific app credentials instead. Both pairs can be configured when keeping
+existing legacy connections alongside Unified accounts. The legacy callback is
+`PUBLIC_BASE_URL` plus `/auth/instagram/callback`. The API version is configurable.
 
 Switching to `live` makes authorized publishing requests capable of posting to the
 connected account. It does not grant an account connection or permission by itself.
@@ -85,7 +128,7 @@ Bring the service up, finish login, and review the selected account and drafts b
 scheduling a real post. Do not carry unreviewed demo records into production; start
 with a separate database and upload volume for the live deployment.
 
-## 3. Complete Instagram authorization
+## Complete legacy Instagram authorization
 
 1. Open the service's `/docs` page. Use **Authorize** to enter the admin API key as the
    Bearer credential. The page exposes interactive API documentation; it is not a
@@ -102,7 +145,7 @@ with a separate database and upload volume for the live deployment.
 You never need to put your Instagram password into this service. Completing OAuth is
 the account owner's action; building this repository cannot complete it automatically.
 
-## 4. Check public media delivery
+## Check public media delivery
 
 Meta retrieves the file from the media URL supplied during publishing. The service
 issues an expiring signed URL for the uploaded file so Meta can retrieve that specific
@@ -122,7 +165,7 @@ The supplied sample assets are for trying the demo workflow. For live publishing
 upload the files you have chosen for the connected account. A Reel needs an actual
 video; its cover is only a still image.
 
-## 5. Make one deliberate first post
+## Make one deliberate first post
 
 Start with a reviewed single-image feed post and its final caption:
 
@@ -145,7 +188,18 @@ outside this project's publishing API.
 
 ## Tokens and reconnecting
 
-Meta's long-lived Instagram tokens normally last 60 days. The token-refresh endpoint
+Unified tokens use the expiry Meta reports during import, including a confirmed
+non-expiring token. They can still be revoked. This service does not refresh them:
+generate and import an authorized replacement when needed. Check account expiry and
+publishing failures before scheduling additional content.
+
+To disconnect a Unified grant locally, use the protected
+`POST /api/grants/{grant_id}/revoke` endpoint. It disconnects all accounts linked to
+that grant and cancels their pending work. Active processing must finish or be
+reconciled first. This does not revoke the authorization at Meta or erase the account
+history; remove the business integration at Meta when retiring it.
+
+Legacy long-lived Instagram tokens normally last 60 days. The token-refresh endpoint
 accepts unexpired long-lived tokens that are at least 24 hours old. Before claiming
 posts, the live worker checks for tokens that expire within seven days and were last
 issued/refreshed more than 24 hours and one minute ago. It attempts to refresh each
@@ -159,7 +213,7 @@ raw tokens, authorization codes, or app secrets while diagnosing a connection.
 
 ## Disconnecting and deleting account data
 
-Meta's verified deauthorization callback removes the stored account token and cancels
+For legacy Instagram Login, Meta's verified deauthorization callback removes the stored account token and cancels
 queued posts. Its data-deletion callback removes the account and its linked post and
 audit history. The implementation stores Meta's app-scoped user ID separately from the
 professional Instagram publishing ID so callbacks apply to the intended connection.
@@ -176,6 +230,10 @@ the publisher admin key, as required for Meta's data-deletion workflow.
 
 ## Official references
 
+- [New-app restriction and migration](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/migration-guide)
+- [Unified Login setup](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/get-started)
+- [Unified Login authentication](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/authentication)
+- [Access-token inspection](https://developers.facebook.com/docs/graph-api/reference/debug_token/)
 - [Instagram Login setup and token lifecycle](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/)
 - [Get started and access levels](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/get-started/)
 - [Content publishing requirements](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)

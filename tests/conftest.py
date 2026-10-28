@@ -20,10 +20,16 @@ class FakeInstagram:
     def __init__(self):
         self.exchanged_codes = []
         self.refreshed_tokens = []
-        self.profile = {"user_id": "17841400000000001", "username": "publisher_test", "account_type": "BUSINESS"}
+        self.profile = {
+            "user_id": "17841400000000001",
+            "username": "publisher_test",
+            "account_type": "BUSINESS",
+        }
 
     def authorization_url(self, state):
-        return "https://www.instagram.com/oauth/authorize?" + urlencode({"state": state, "response_type": "code"})
+        return "https://www.instagram.com/oauth/authorize?" + urlencode(
+            {"state": state, "response_type": "code"}
+        )
 
     def exchange_code(self, code):
         self.exchanged_codes.append(code)
@@ -64,7 +70,11 @@ def api_bundle(tmp_path):
     app = create_app(settings, sessions, provider)
     with TestClient(app, base_url=settings.public_base_url) as client:
         yield SimpleNamespace(
-            app=app, client=client, settings=settings, sessions=sessions, provider=provider,
+            app=app,
+            client=client,
+            settings=settings,
+            sessions=sessions,
+            provider=provider,
             headers={"Authorization": f"Bearer {settings.admin_api_key.get_secret_value()}"},
         )
     sessions.kw["bind"].dispose()

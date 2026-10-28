@@ -14,8 +14,9 @@ python -m pytest
 
 Add focused tests for behavior changes. Changes to approvals, retries, account
 identifiers, callbacks, or media delivery should preserve the service's existing
-authentication and duplicate-prevention guarantees. Document any database changes:
-the initial release does not migrate existing schemas automatically.
+authentication and duplicate-prevention guarantees. Document database changes and
+test the offline migration with existing account and post records. Startup must not
+partially upgrade an older schema while the API and worker share it.
 
 Explain the problem, the resulting behavior, and relevant validation in your pull
 request. Contributions are made under this project's MIT license.

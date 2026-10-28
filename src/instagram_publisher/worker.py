@@ -18,6 +18,7 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 
 from instagram_publisher.config import Settings
+from instagram_publisher.credentials import account_token, client_for_account, credentials_valid
 from instagram_publisher.db import Account, Asset, Post, WorkerHeartbeat, audit, make_session_factory
 from instagram_publisher.meta import MetaClient, MetaError
 from instagram_publisher.security import decrypt_token, encrypt_token, media_url
@@ -76,6 +77,7 @@ def refresh_due_accounts(settings, session_factory, client=None, stop_event=None
     with session_factory() as session:
         accounts = session.scalars(
             select(Account).where(
+                Account.auth_provider == "INSTAGRAM",
                 Account.token_expires_at > now,
                 Account.token_expires_at < now + 7 * 86400,
                 Account.token_refreshed_at < now - 86460,
@@ -115,7 +117,12 @@ def refresh_due_accounts(settings, session_factory, client=None, stop_event=None
                 result = client.refresh_token(decrypt_token(account.token_ciphertext, key))
                 token = result.get("access_token")
                 expires_in = result.get("expires_in")
-                if not isinstance(token, str) or not token or not isinstance(expires_in, int) or expires_in <= 0:
+                if (
+                    not isinstance(token, str)
+                    or not token
+                    or not isinstance(expires_in, int)
+                    or expires_in <= 0
+                ):
                     raise PublishingError("Instagram returned incomplete token refresh data.")
                 completed_at = time.time()
                 with session_factory.begin() as session:
@@ -229,7 +236,9 @@ def _fence(settings, session_factory, post_id: str, owner: str, **fields):
             .values(lease_expires_at=now + settings.worker_lease_seconds, updated_at=now, **fields)
         )
         if not result.rowcount:
-            raise LeaseLost("Publishing lease expired or changed. Review the post before taking further action.")
+            raise LeaseLost(
+                "Publishing lease expired or changed. Review the post before taking further action."
+            )
     _heartbeat(session_factory, settings.publisher_mode)
 
 
@@ -260,7 +269,9 @@ def _mark_failure(session_factory, post_id: str, owner: str, exc: Exception):
     if isinstance(exc, (PublishingError, MetaError)):
         message = str(exc)[:600]
     elif isinstance(exc, InvalidToken):
-        message = "Stored account credentials could not be decrypted. Restore the encryption key or reconnect."
+        message = (
+            "Stored account credentials could not be decrypted. Restore the encryption key or reconnect."
+        )
     else:
         # Never store repr(exc), request URLs or provider response bodies.
         message = "Publishing encountered an unexpected error. Check the service and review this post."
@@ -281,7 +292,9 @@ def _mark_failure(session_factory, post_id: str, owner: str, exc: Exception):
         result = session.execute(
             update(Post)
             .where(Post.id == post_id, Post.status == "PROCESSING", Post.lease_owner == owner)
-            .values(status=status, error=message, lease_owner=None, lease_expires_at=None, updated_at=time.time())
+            .values(
+                status=status, error=message, lease_owner=None, lease_expires_at=None, updated_at=time.time()
+            )
         )
         if result.rowcount:
             audit(session, "worker_failed", post_id, status)
@@ -326,7 +339,9 @@ def _load_and_validate(settings, session_factory, post_id: str):
             if post.kind == "STORY":
                 if abs(ratio / (9 / 16) - 1) > 0.01:
                     raise PublishingError("Stories must use a 9:16 asset.")
-                if asset.mime_type == "video/mp4" and (asset.duration is None or not 3 <= asset.duration <= 60):
+                if asset.mime_type == "video/mp4" and (
+                    asset.duration is None or not 3 <= asset.duration <= 60
+                ):
                     raise PublishingError("Story videos must be between 3 and 60 seconds.")
             if post.kind == "CAROUSEL" and asset.mime_type == "video/mp4":
                 if asset.duration is None or not 3 <= asset.duration <= 60:
@@ -335,10 +350,16 @@ def _load_and_validate(settings, session_factory, post_id: str):
         if settings.publisher_mode == "live":
             if account is None:
                 raise PublishingError("Connect an Instagram professional account before publishing.")
-            if account.token_expires_at <= time.time() + 600:
-                raise PublishingError("Instagram authorization is expired or expires soon. Refresh or reconnect first.")
-            account_type = account.account_type.upper().replace(" ", "_")
-            if account_type not in {"BUSINESS", "MEDIA_CREATOR", "CREATOR"}:
+            if not credentials_valid(account, time.time() + 600):
+                raise PublishingError(
+                    "Instagram authorization is expired or expires soon. Refresh or reconnect first."
+                )
+            account_type = (account.account_type or "").upper().replace(" ", "_")
+            if account.auth_provider == "INSTAGRAM" and account_type not in {
+                "BUSINESS",
+                "MEDIA_CREATOR",
+                "CREATOR",
+            }:
                 raise PublishingError("Publishing requires an Instagram professional account.")
             if post.kind == "STORY" and account_type != "BUSINESS":
                 raise PublishingError("Automatic Story publishing requires an Instagram Business account.")
@@ -348,14 +369,18 @@ def _load_and_validate(settings, session_factory, post_id: str):
 def _check_quota(result):
     rows = result.get("data", []) if isinstance(result, dict) else []
     if not rows or not isinstance(rows[0], dict):
-        raise PublishingError("Instagram did not return its publishing quota. Try again after checking the account.")
+        raise PublishingError(
+            "Instagram did not return its publishing quota. Try again after checking the account."
+        )
     entry = rows[0]
     quota = entry.get("config", {}).get("quota_total")
     usage = entry.get("quota_usage")
     if not isinstance(quota, (int, float)) or not isinstance(usage, (int, float)) or quota <= 0 or usage < 0:
         raise PublishingError("Instagram returned an unrecognized publishing quota.")
     if usage >= quota:
-        raise PublishingError("Instagram's rolling publishing limit has been reached. Review and reschedule later.")
+        raise PublishingError(
+            "Instagram's rolling publishing limit has been reached. Review and reschedule later."
+        )
 
 
 def _wait_for_container(
@@ -371,14 +396,20 @@ def _wait_for_container(
             return
         if status == "PUBLISHED":
             # This should be impossible for a freshly created container. Never publish it twice.
-            raise PublicationUncertain("Instagram reports this container was already published. Check the account.")
+            raise PublicationUncertain(
+                "Instagram reports this container was already published. Check the account."
+            )
         if status in {"ERROR", "EXPIRED"}:
-            raise PublishingError(f"Instagram media processing ended with {status}. Review the media and retry.")
+            raise PublishingError(
+                f"Instagram media processing ended with {status}. Review the media and retry."
+            )
         if status != "IN_PROGRESS":
             raise PublishingError("Instagram returned an unknown media-processing status.")
         if attempt + 1 < settings.container_poll_attempts:
             _wait_interruptibly(settings.container_poll_seconds, sleep, stop_event)
-    raise PublishingError("Instagram media is still processing. Publication was not requested; review before retrying.")
+    raise PublishingError(
+        "Instagram media is still processing. Publication was not requested; review before retrying."
+    )
 
 
 def _publish(settings, session_factory, post_id, owner, client, sleep, stop_event=None):
@@ -387,7 +418,7 @@ def _publish(settings, session_factory, post_id, owner, client, sleep, stop_even
     if settings.publisher_mode == "demo":
         _complete(settings, session_factory, post_id, owner, "DEMO_PUBLISHED", published_at=time.time())
         return
-    token = decrypt_token(account.token_ciphertext, settings.token_encryption_key.get_secret_value())
+    token = account_token(account, settings)
     _fence(settings, session_factory, post_id, owner)
     _check_shutdown(stop_event)
     _check_quota(client.publishing_limit(account.instagram_user_id, token))
@@ -462,7 +493,11 @@ def _publish(settings, session_factory, post_id, owner, client, sleep, stop_even
             with session_factory.begin() as session:
                 session.execute(
                     update(Post)
-                    .where(Post.id == post_id, Post.status == "PUBLISHED", Post.published_media_id == published_id)
+                    .where(
+                        Post.id == post_id,
+                        Post.status == "PUBLISHED",
+                        Post.published_media_id == published_id,
+                    )
                     .values(permalink=permalink, updated_at=time.time())
                 )
     except Exception:
@@ -485,12 +520,12 @@ def run_once(settings, session_factory, client=None, sleep=time.sleep, stop_even
     owned_client = False
     try:
         if settings.publisher_mode == "live" and client is None:
-            client = MetaClient(
-                app_id=settings.meta_app_id,
-                app_secret=settings.meta_app_secret.get_secret_value(),
-                redirect_uri=settings.redirect_uri,
-                api_version=settings.meta_api_version,
-            )
+            with session_factory() as session:
+                post = session.get(Post, post_id)
+                account = session.get(Account, post.account_id) if post and post.account_id else None
+                if account is None:
+                    raise PublishingError("Connect an Instagram professional account before publishing.")
+                client = client_for_account(settings, account)
             owned_client = True
         _publish(settings, session_factory, post_id, owner, client, sleep, stop_event)
     except Exception as exc:

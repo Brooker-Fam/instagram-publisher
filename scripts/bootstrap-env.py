@@ -14,9 +14,7 @@ from pathlib import Path
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--output", type=Path, default=Path(".env"), help="new file path (default: .env)"
-    )
+    parser.add_argument("--output", type=Path, default=Path(".env"), help="new file path (default: .env)")
     args = parser.parse_args()
     target = args.output.absolute()
     if target.exists() or target.is_symlink():

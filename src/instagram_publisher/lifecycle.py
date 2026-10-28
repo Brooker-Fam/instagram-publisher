@@ -45,9 +45,7 @@ def _decode_urlsafe(value: str) -> bytes:
         raise _invalid()
     unpadded = value.rstrip("=")
     try:
-        raw = base64.b64decode(
-            unpadded + "=" * (-len(unpadded) % 4), altchars=b"-_", validate=True
-        )
+        raw = base64.b64decode(unpadded + "=" * (-len(unpadded) % 4), altchars=b"-_", validate=True)
     except (ValueError, binascii.Error):
         raise _invalid() from None
     # Reject non-canonical encodings whose ignored bits create replay aliases.

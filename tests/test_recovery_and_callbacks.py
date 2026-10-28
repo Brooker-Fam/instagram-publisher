@@ -36,8 +36,13 @@ def signed_request(api, payload=None, *, spaced=False, wrong_secret=False):
 def add_post(api, account_id, *, status="NEEDS_ATTENTION", container_id="18000000000000001"):
     with api.sessions.begin() as session:
         post = Post(
-            account_id=account_id, kind="IMAGE", asset_ids=[], caption="Test publication",
-            status=status, container_id=container_id, publish_requested_at=time.time() - 60,
+            account_id=account_id,
+            kind="IMAGE",
+            asset_ids=[],
+            caption="Test publication",
+            status=status,
+            container_id=container_id,
+            publish_requested_at=time.time() - 60,
             error="Original publication result was uncertain",
         )
         session.add(post)
@@ -204,7 +209,9 @@ def test_old_issued_at_does_not_revoke_or_delete_a_newer_connection(api_bundle, 
     api = api_bundle
     account = connect_account(api)
     payload = {"algorithm": "HMAC-SHA256", "user_id": APP_SCOPED_ID, "issued_at": int(time.time()) - 300}
-    response = api.client.post(f"/auth/instagram/{route}", data={"signed_request": signed_request(api, payload)})
+    response = api.client.post(
+        f"/auth/instagram/{route}", data={"signed_request": signed_request(api, payload)}
+    )
     assert response.status_code == 200
     with api.sessions() as session:
         assert session.get(Account, account["id"]).token_ciphertext
@@ -242,7 +249,9 @@ def test_deletion_uses_app_scoped_identity_without_disclosing_unmatched_accounts
     api = api_bundle
     account = connect_account(api)
     wrong_identity = {"algorithm": "HMAC-SHA256", "user_id": account["instagram_user_id"]}
-    response = api.client.post("/auth/instagram/data-deletion", data={"signed_request": signed_request(api, wrong_identity)})
+    response = api.client.post(
+        "/auth/instagram/data-deletion", data={"signed_request": signed_request(api, wrong_identity)}
+    )
     assert response.status_code == 200
     assert set(response.json()) == {"url", "confirmation_code"}
     with api.sessions() as session:

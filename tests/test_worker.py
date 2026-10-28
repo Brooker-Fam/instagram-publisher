@@ -119,7 +119,9 @@ def context(tmp_path):
             instagram_user_id="1001",
             username="publisher_test",
             account_type="BUSINESS",
-            token_ciphertext=encrypt_token("test-access-token", settings.token_encryption_key.get_secret_value()),
+            token_ciphertext=encrypt_token(
+                "test-access-token", settings.token_encryption_key.get_secret_value()
+            ),
             token_expires_at=time.time() + 3600,
         )
         session.add(account)
@@ -486,9 +488,9 @@ def test_due_token_is_refreshed_and_saved_encrypted(context):
         account = session.get(Account, context.account_id)
         assert account.token_ciphertext != old_ciphertext
         assert account.token_ciphertext != "new-refreshed-token"
-        assert decrypt_token(account.token_ciphertext, context.settings.token_encryption_key.get_secret_value()) == (
-            "new-refreshed-token"
-        )
+        assert decrypt_token(
+            account.token_ciphertext, context.settings.token_encryption_key.get_secret_value()
+        ) == ("new-refreshed-token")
         assert account.token_refreshed_at > old_refreshed
         assert account.token_expires_at >= started + 59 * 86400
     assert client.count("refresh_token") == 1

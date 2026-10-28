@@ -19,7 +19,13 @@ status instead of assuming one permanent daily allowance.
 
 ## Token maintenance
 
-Before claiming a job, the live worker checks unexpired account tokens that are within
+Unified Login tokens are checked during import and stored with the expiry Meta reports.
+The worker does not refresh system-user tokens. A token without a scheduled expiry can
+still be revoked. Generate and import an authorized replacement when required; inspect
+its selected account and expiry before queuing more work. The legacy `refresh` endpoint
+does not accept Unified connections.
+
+For legacy Instagram Login, before claiming a job the live worker checks unexpired account tokens that are within
 seven days of expiry and were last issued/refreshed more than 24 hours and one minute
 ago. It attempts a refresh at most once per account per hour, including after failures.
 Successful replacements are encrypted before storage; a concurrent reconnect is not
@@ -71,9 +77,10 @@ publish request. Do not replace graceful stops with immediate forced termination
 normal deployments. A host crash or forced kill can still leave an uncertain attempt;
 the lease-recovery and reconciliation workflow exists for that case.
 
-The initial schema is created at startup, with no versioned migration system yet.
-Back up the database and inspect schema changes before upgrading. Test upgrades on a
-separate copy with demo mode enabled before starting a worker on production data.
+Fresh databases are initialized at startup. Existing databases use the
+[offline migration](deployment.md#upgrade-an-existing-database), with both processes
+stopped. Back up the database and inspect schema changes before upgrading. Test upgrades
+on a separate copy with demo mode enabled before starting a worker on production data.
 
 After an upgrade or restart:
 
@@ -112,11 +119,18 @@ URLs as permanent public links. Avoid deleting or moving files that pending jobs
 Meta's media-processing step still need. Keep completed-job records long enough to
 investigate delivery and prevent accidental duplicate submissions.
 
-The verified Meta deauthorization callback removes stored account credentials and
+For legacy Instagram Login, the verified Meta deauthorization callback removes stored account credentials and
 cancels queued posts. The verified data-deletion callback removes the account and
 its linked post and audit history. Its public confirmation route exposes status only.
 Stale callbacks cannot delete a newer reconnection. These callbacks do not retract
 content already published on Instagram.
+
+Unified lifecycle callbacks are not implemented. Revoke its business integration at
+Meta when retiring access. The protected `POST /api/grants/{grant_id}/revoke` endpoint
+clears its stored token and cancels pending work for every linked account; active
+processing must finish or be reconciled first. It retains account and post history,
+including uncertain results. Apply the deployment's account-data retention procedure
+separately. Do not assume a legacy callback removes a Unified grant.
 
 Administrator-uploaded files are retained separately from Meta account data. There
 is no automatic business-specific retention policy for those files or independent

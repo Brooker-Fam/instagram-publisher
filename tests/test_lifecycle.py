@@ -70,14 +70,17 @@ def test_request_length_is_bounded_before_decoding():
         verify_signed_request("x" * MAX_SIGNED_REQUEST_LENGTH + ".y", SECRET, now=NOW)
 
 
-@pytest.mark.parametrize("raw", [
-    b"not json private-instagram-app-secret",
-    b"[]",
-    b"null",
-    b'{"algorithm":"HMAC-SHA256","user_id":"123","user_id":"456"}',
-    b'{"algorithm":"HMAC-SHA256","user_id":"123","issued_at":NaN}',
-    b"\xff\xfe",
-])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"not json private-instagram-app-secret",
+        b"[]",
+        b"null",
+        b'{"algorithm":"HMAC-SHA256","user_id":"123","user_id":"456"}',
+        b'{"algorithm":"HMAC-SHA256","user_id":"123","issued_at":NaN}',
+        b"\xff\xfe",
+    ],
+)
 def test_invalid_json_is_rejected_without_payload_leaks(raw):
     with pytest.raises(SignedRequestError) as caught:
         verify_signed_request(sign(raw), SECRET, now=NOW)
@@ -97,17 +100,20 @@ def test_rejects_invalid_user_id(user_id):
         verify_signed_request(sign(base_payload(user_id=user_id)), SECRET, now=NOW)
 
 
-@pytest.mark.parametrize("fields", [
-    {"expires": NOW},
-    {"expires": NOW - 1},
-    {"issued_at": NOW + 301},
-    {"issued_at": -1},
-    {"issued_at": True},
-    {"issued_at": "1800000000"},
-    {"expires": 1.5},
-    {"expires": False},
-    {"issued_at": NOW + 200, "expires": NOW + 100},
-])
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"expires": NOW},
+        {"expires": NOW - 1},
+        {"issued_at": NOW + 301},
+        {"issued_at": -1},
+        {"issued_at": True},
+        {"issued_at": "1800000000"},
+        {"expires": 1.5},
+        {"expires": False},
+        {"issued_at": NOW + 200, "expires": NOW + 100},
+    ],
+)
 def test_expired_future_or_malformed_timestamps_fail(fields):
     with pytest.raises(SignedRequestError):
         verify_signed_request(sign(base_payload(**fields)), SECRET, now=NOW)

@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     media_signing_key: SecretStr
     meta_app_id: str = ""
     meta_app_secret: SecretStr = SecretStr("")
+    meta_unified_app_id: str = ""
+    meta_unified_app_secret: SecretStr = SecretStr("")
     meta_api_version: str = "v26.0"
     worker_poll_seconds: float = 10.0
     worker_lease_seconds: int = 900
@@ -50,17 +52,30 @@ class Settings(BaseSettings):
         try:
             Fernet(self.token_encryption_key.get_secret_value().encode())
         except (ValueError, TypeError) as exc:
-            raise ValueError("TOKEN_ENCRYPTION_KEY must be a Fernet key; run scripts/bootstrap-env.py") from exc
+            raise ValueError(
+                "TOKEN_ENCRYPTION_KEY must be a Fernet key; run scripts/bootstrap-env.py"
+            ) from exc
         url = urlparse(self.public_base_url)
-        if not url.hostname or url.username or url.password or url.query or url.fragment or url.path not in {"", "/"}:
+        if (
+            not url.hostname
+            or url.username
+            or url.password
+            or url.query
+            or url.fragment
+            or url.path not in {"", "/"}
+        ):
             raise ValueError("PUBLIC_BASE_URL must be an origin with no path, credentials, query or fragment")
         if url.scheme not in {"http", "https"}:
             raise ValueError("PUBLIC_BASE_URL must use http or https")
         if self.publisher_mode == "live":
             if url.scheme != "https" or url.hostname in {"localhost", "127.0.0.1", "::1"}:
                 raise ValueError("Live publishing requires a public HTTPS origin")
-            if not self.meta_app_id or not self.meta_app_secret.get_secret_value():
-                raise ValueError("Live publishing requires META_APP_ID and META_APP_SECRET")
+            legacy = self.meta_app_id and self.meta_app_secret.get_secret_value()
+            unified = self.meta_unified_app_id and self.meta_unified_app_secret.get_secret_value()
+            if not legacy and not unified:
+                raise ValueError(
+                    "Live publishing requires a complete legacy or Unified Meta app credential pair"
+                )
         if not 1 <= self.worker_poll_seconds <= 300:
             raise ValueError("WORKER_POLL_SECONDS must be between 1 and 300")
         if self.worker_lease_seconds < 600:

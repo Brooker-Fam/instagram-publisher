@@ -143,9 +143,7 @@ class MetaClient:
         mutation = method != "GET"
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         try:
-            response = self._http.request(
-                method, url, headers=headers, params=params, data=data, json=json
-            )
+            response = self._http.request(method, url, headers=headers, params=params, data=data, json=json)
         except httpx.HTTPError:
             # No chained httpx exception: its URL can contain OAuth credentials.
             raise MetaError(
@@ -164,9 +162,8 @@ class MetaClient:
                 ambiguous=mutation,
                 status=response.status_code,
             ) from None
-        if (
-            not response.is_success
-            or (isinstance(payload, dict) and ("error" in payload or "error_type" in payload))
+        if not response.is_success or (
+            isinstance(payload, dict) and ("error" in payload or "error_type" in payload)
         ):
             raise self._error(payload, response.status_code, mutation=mutation)
         if not isinstance(payload, dict):
@@ -181,16 +178,20 @@ class MetaClient:
         self._oauth_configured()
         if not state:
             raise MetaError("An OAuth state value is required.")
-        return AUTHORIZATION_ENDPOINT + "?" + urlencode(
-            {
-                "client_id": self.app_id,
-                "redirect_uri": self.redirect_uri,
-                "response_type": "code",
-                "scope": ",".join(SCOPES),
-                "state": state,
-                "enable_fb_login": "false",
-                "force_reauth": "true",
-            }
+        return (
+            AUTHORIZATION_ENDPOINT
+            + "?"
+            + urlencode(
+                {
+                    "client_id": self.app_id,
+                    "redirect_uri": self.redirect_uri,
+                    "response_type": "code",
+                    "scope": ",".join(SCOPES),
+                    "state": state,
+                    "enable_fb_login": "false",
+                    "force_reauth": "true",
+                }
+            )
         )
 
     @staticmethod

@@ -88,7 +88,7 @@ publisher.example.com {
 
 Point DNS at the host, allow HTTPS, and set `PUBLIC_BASE_URL` to the same origin.
 Apply the settings in [Meta setup](meta-setup.md), restart the API and worker, and
-finish OAuth. Review proxy timeouts and upload limits so they allow the permitted
+import the Unified token or finish legacy OAuth. Review proxy timeouts and upload limits so they allow the permitted
 media size. Keep reverse-proxy HTTP access logging disabled, as in the Caddy example,
 or explicitly redact query strings before enabling it. OAuth callback parameters
 contain authorization credentials, and signed-media query parameters grant file access.
@@ -143,6 +143,23 @@ The smoke script only reads the health endpoint. It never uploads or publishes.
 CI checks code, runs the offline tests, and builds the runtime image. It does not
 deploy, log in to Instagram, or make live posts.
 
-This initial release creates the database schema on startup. It does not include
-versioned schema migrations yet. Back up `/data` before an upgrade and examine any
-model changes; do not assume startup will migrate an older database automatically.
+## Upgrade an existing database
+
+Stop both API and worker and back up the database, uploads, and encryption key before
+upgrading. Fresh databases are initialized on startup. An older account schema is
+rejected at startup until the offline migration completes:
+
+```sh
+python -m instagram_publisher.migrations \
+  --database-url sqlite:///./data/publisher.db \
+  --legacy-app-id YOUR_EXISTING_INSTAGRAM_APP_ID
+```
+
+Use the database path for the deployment and the Instagram app ID that issued its
+existing legacy credentials. Omit `--legacy-app-id` only when the database contains no
+accounts. Run the command with both processes stopped. It preserves
+account and post identifiers while separating Unified grants from Instagram assets.
+The command saves an owner-readable database backup before rebuilding the account
+table, checks foreign keys, and rolls back a failed migration. Check its result before
+restarting. Test the upgrade on a private copy with
+demo mode enabled; never run a worker against a restored live queue as an upgrade test.

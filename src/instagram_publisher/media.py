@@ -57,7 +57,9 @@ def _normalize_image(data: bytes, *, story: bool) -> tuple[bytes, int, int]:
                 if source.format not in {"JPEG", "PNG", "WEBP"}:
                     raise MediaValidationError("Use a JPEG, PNG, or WebP image.")
                 if getattr(source, "is_animated", False):
-                    raise MediaValidationError("Animated images are not supported; upload a still image or MP4.")
+                    raise MediaValidationError(
+                        "Animated images are not supported; upload a still image or MP4."
+                    )
                 if source.width * source.height > MAX_IMAGE_PIXELS:
                     raise MediaValidationError("Images must contain no more than 25 million pixels.")
                 # Transpose before dimensions/aspect validation. Loading is bounded
@@ -70,7 +72,9 @@ def _normalize_image(data: bytes, *, story: bool) -> tuple[bytes, int, int]:
                     if not _portrait_story(width, height):
                         raise MediaValidationError("Use a vertical 9:16 image for a Story or Reel cover.")
                 elif not 0.8 <= width / height <= 1.91:
-                    raise MediaValidationError("Feed images must have an aspect ratio between 4:5 and 1.91:1.")
+                    raise MediaValidationError(
+                        "Feed images must have an aspect ratio between 4:5 and 1.91:1."
+                    )
 
                 # Construct a fresh image to strip EXIF, GPS, comments, and ICC
                 # metadata. Flatten transparency to a neutral cream background.
@@ -89,8 +93,14 @@ def _normalize_image(data: bytes, *, story: bool) -> tuple[bytes, int, int]:
                 return normalized, width, height
     except MediaValidationError:
         raise
-    except (UnidentifiedImageError, OSError, SyntaxError, ValueError,
-            Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+    except (
+        UnidentifiedImageError,
+        OSError,
+        SyntaxError,
+        ValueError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ) as exc:
         raise MediaValidationError("The image is invalid or too large to decode safely.") from exc
 
 
@@ -114,13 +124,13 @@ def _require_fast_start(data: bytes) -> None:
             raise MediaValidationError("The MP4 contains too many top-level boxes; export a standard MP4.")
         if len(data) - offset < 8:
             raise MediaValidationError("The MP4 contains a truncated box header.")
-        size = int.from_bytes(data[offset:offset + 4], "big")
-        box_type = data[offset + 4:offset + 8]
+        size = int.from_bytes(data[offset : offset + 4], "big")
+        box_type = data[offset + 4 : offset + 8]
         header_size = 8
         if size == 1:
             if len(data) - offset < 16:
                 raise MediaValidationError("The MP4 contains a truncated extended box header.")
-            size = int.from_bytes(data[offset + 8:offset + 16], "big")
+            size = int.from_bytes(data[offset + 8 : offset + 16], "big")
             header_size = 16
         elif size == 0:
             size = len(data) - offset
@@ -128,7 +138,9 @@ def _require_fast_start(data: bytes) -> None:
             raise MediaValidationError("The MP4 contains an invalid box length.")
         if box_type == b"moov":
             if seen_movie:
-                raise MediaValidationError("The MP4 contains duplicate movie metadata; export a standard MP4.")
+                raise MediaValidationError(
+                    "The MP4 contains duplicate movie metadata; export a standard MP4."
+                )
             seen_movie = True
         elif box_type == b"mdat":
             if not seen_movie:
@@ -169,15 +181,30 @@ def _probe_video(path: Path, *, story: bool) -> tuple[int, int, float]:
         # allocations, and raw parser errors may contain sensitive file metadata.
         with tempfile.TemporaryFile() as probe_output:
             result = subprocess.run(
-                ["ffprobe", "-v", "error", "-protocol_whitelist", "file",
-                 "-show_streams", "-show_format", "-of", "json", str(path)],
-                stdin=subprocess.DEVNULL, stdout=probe_output,
-                stderr=subprocess.DEVNULL, timeout=20, check=False,
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-protocol_whitelist",
+                    "file",
+                    "-show_streams",
+                    "-show_format",
+                    "-of",
+                    "json",
+                    str(path),
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=probe_output,
+                stderr=subprocess.DEVNULL,
+                timeout=20,
+                check=False,
             )
             probe_output.seek(0)
             raw_output = probe_output.read(1_000_001)
     except FileNotFoundError as exc:
-        raise MediaValidationError("Video validation is unavailable: install ffmpeg/ffprobe on the server.") from exc
+        raise MediaValidationError(
+            "Video validation is unavailable: install ffmpeg/ffprobe on the server."
+        ) from exc
     except (subprocess.TimeoutExpired, OSError) as exc:
         raise MediaValidationError("The video could not be validated within the time limit.") from exc
     if result.returncode != 0 or len(raw_output) > 1_000_000:
@@ -318,7 +345,11 @@ def sign_media_path(asset_id: str, expires: int, secret: str) -> str:
 
 
 def verify_media_signature(
-    asset_id: str, expires: int, signature: str, secret: str, now: float | None = None,
+    asset_id: str,
+    expires: int,
+    signature: str,
+    secret: str,
+    now: float | None = None,
 ) -> bool:
     """Verify a signed delivery request; expiration is exclusive."""
     try:

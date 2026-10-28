@@ -57,7 +57,9 @@ def test_exchange_code_accepts_current_and_legacy_shapes(wrapped):
 
 
 def test_exchange_refuses_ambiguous_multi_account_response():
-    with client(lambda _: httpx.Response(200, json={"data": [{"access_token": "a"}, {"access_token": "b"}]})) as meta:
+    with client(
+        lambda _: httpx.Response(200, json={"data": [{"access_token": "a"}, {"access_token": "b"}]})
+    ) as meta:
         with pytest.raises(MetaError) as error:
             meta.exchange_code("code")
     assert error.value.ambiguous
@@ -111,23 +113,36 @@ def test_image_creation_and_publish_are_separate_bearer_requests():
         assert request.headers["Content-Type"].startswith("application/json")
         body = json.loads(request.content)
         if request.url.path.endswith("/media"):
-            assert body == {"image_url": "https://media.example/photo.jpg", "caption": "Small wins matter", "alt_text": "Orange graphic"}
+            assert body == {
+                "image_url": "https://media.example/photo.jpg",
+                "caption": "Small wins matter",
+                "alt_text": "Orange graphic",
+            }
             return httpx.Response(200, json={"id": "222"})
         assert body == {"creation_id": "222"}
         return httpx.Response(200, json={"id": "333"})
 
     with client(handler) as meta:
-        container = meta.create_container("987", "secret-token", image_url="https://media.example/photo.jpg", caption="Small wins matter", alt_text="Orange graphic")
+        container = meta.create_container(
+            "987",
+            "secret-token",
+            image_url="https://media.example/photo.jpg",
+            caption="Small wins matter",
+            alt_text="Orange graphic",
+        )
         assert len(calls) == 1  # Creation never implicitly publishes.
         assert meta.publish_container("987", "secret-token", container) == "333"
     assert len(calls) == 2
 
 
-@pytest.mark.parametrize("media_type,fields", [
-    ("REELS", {"video_url": "https://media.example/video.mp4", "share_to_feed": True}),
-    ("STORIES", {"image_url": "https://media.example/story.jpg"}),
-    ("CAROUSEL", {"children": ["222", "333"]}),
-])
+@pytest.mark.parametrize(
+    "media_type,fields",
+    [
+        ("REELS", {"video_url": "https://media.example/video.mp4", "share_to_feed": True}),
+        ("STORIES", {"image_url": "https://media.example/story.jpg"}),
+        ("CAROUSEL", {"children": ["222", "333"]}),
+    ],
+)
 def test_container_fields_for_supported_media(media_type, fields):
     def handler(request):
         body = json.loads(request.content)
@@ -163,12 +178,15 @@ def test_status_media_and_quota_reads_request_correct_fields():
     assert len(paths) == 3
 
 
-@pytest.mark.parametrize("status,body,expected_code,retryable,ambiguous", [
-    (400, {"error": {"code": 190, "message": "secret-token private-app-secret"}}, 190, False, False),
-    (403, {"error": {"code": 10, "message": "secret-token"}}, 10, False, False),
-    (429, {"error": {"code": 4, "message": "secret-token"}}, 4, True, False),
-    (503, {"error": {"code": 2, "message": "secret-token"}}, 2, True, True),
-])
+@pytest.mark.parametrize(
+    "status,body,expected_code,retryable,ambiguous",
+    [
+        (400, {"error": {"code": 190, "message": "secret-token private-app-secret"}}, 190, False, False),
+        (403, {"error": {"code": 10, "message": "secret-token"}}, 10, False, False),
+        (429, {"error": {"code": 4, "message": "secret-token"}}, 4, True, False),
+        (503, {"error": {"code": 2, "message": "secret-token"}}, 2, True, True),
+    ],
+)
 def test_errors_are_safe_and_mutations_not_retried(status, body, expected_code, retryable, ambiguous):
     calls = []
 
@@ -204,7 +222,9 @@ def test_publish_timeout_is_ambiguous_and_not_retried():
     assert len(calls) == 1
 
 
-@pytest.mark.parametrize("response", [httpx.Response(200, content=b"invalid secret-token"), httpx.Response(200, json={})])
+@pytest.mark.parametrize(
+    "response", [httpx.Response(200, content=b"invalid secret-token"), httpx.Response(200, json={})]
+)
 def test_unreadable_success_is_ambiguous_after_publish(response):
     with client(lambda _: response) as meta:
         with pytest.raises(MetaError) as caught:
