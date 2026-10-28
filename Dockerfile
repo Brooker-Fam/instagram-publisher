@@ -23,7 +23,7 @@ RUN --mount=type=secret,id=proxy_ca \
     && mkdir -p /data/uploads \
     && chown -R publisher:publisher /data
 
-COPY pyproject.toml requirements.lock README.md ./
+COPY pyproject.toml requirements.lock README.md LICENSE ./
 COPY src ./src
 
 RUN --mount=type=secret,id=proxy_ca \

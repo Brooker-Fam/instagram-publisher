@@ -1,6 +1,6 @@
 # Maple Baby Publisher
 
-A private Instagram publishing API for Maple Baby. Upload media, create a draft,
+An open-source Instagram publishing API for Maple Baby. Upload media, create a draft,
 review its exact revision, then approve it for immediate or scheduled publishing.
 The durable worker handles Meta's container workflow and records the outcome.
 
@@ -128,3 +128,8 @@ Tests mock Meta; CI does not connect an account or publish. The smoke check is r
 Read [operations](docs/operations.md) for backups, token maintenance, graceful shutdown,
 and uncertain outcomes. The authenticated remote-status and reconciliation endpoints
 check an existing container; reconciliation never repeats a publish request.
+
+## Contributing and license
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development
+and testing guidance. This project is available under the [MIT License](LICENSE).
