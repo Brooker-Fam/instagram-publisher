@@ -1,0 +1,37 @@
+name: maple-baby-publisher
+
+x-service: &service
+  image: maple-baby-publisher:local
+  build: .
+  env_file: .env
+  environment:
+    DATABASE_URL: sqlite:////data/publisher.db
+    MEDIA_ROOT: /data/uploads
+  volumes:
+    - publisher-data:/data
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  stop_grace_period: 90s
+
+services:
+  api:
+    <<: *service
+    ports:
+      - "127.0.0.1:8000:8000"
+  worker:
+    <<: *service
+    command: ["python", "-m", "maple_publisher.worker"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+volumes:
+  publisher-data:
