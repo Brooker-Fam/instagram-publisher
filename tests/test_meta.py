@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 import pytest
 
-from maple_publisher.meta import SCOPES, MetaClient, MetaError
+from instagram_publisher.meta import SCOPES, MetaClient, MetaError
 
 
 def client(handler):
@@ -92,7 +92,7 @@ def test_profile_normalizes_professional_id(wrapped):
         assert request.url.path == "/v26.0/me"
         assert request.headers["Authorization"] == "Bearer secret-token"
         assert "secret-token" not in str(request.url)
-        value = {"id": "111", "user_id": "987", "username": "maplebaby", "account_type": "Business"}
+        value = {"id": "111", "user_id": "987", "username": "publisher_test", "account_type": "Business"}
         return httpx.Response(200, json={"data": [value]} if wrapped else value)
 
     with client(handler) as meta:

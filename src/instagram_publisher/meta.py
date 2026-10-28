@@ -67,7 +67,7 @@ class MetaClient:
             timeout=httpx.Timeout(30.0, connect=10.0),
             follow_redirects=False,
             transport=transport,
-            headers={"Accept": "application/json", "User-Agent": "MaplePublisher/0.1"},
+            headers={"Accept": "application/json", "User-Agent": "InstagramPublisher/0.1"},
         )
 
     def __enter__(self) -> MetaClient:

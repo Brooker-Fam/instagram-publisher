@@ -1,8 +1,10 @@
-# Maple Baby Publisher
+# Instagram Publisher
 
-An open-source Instagram publishing API for Maple Baby. Upload media, create a draft,
-review its exact revision, then approve it for immediate or scheduled publishing.
-The durable worker handles Meta's container workflow and records the outcome.
+A self-hosted, open-source Instagram publishing API for professional accounts.
+Each deployment has one administrator who can connect the accounts they manage.
+Upload media, create a draft, review its exact revision, then approve it for immediate
+or scheduled publishing. The durable worker handles Meta's container workflow and
+records the outcome.
 
 **Starts in demo mode.** Approved demo jobs become `DEMO_PUBLISHED` without calling
 Meta's publishing API. A real account connection is optional for this local workflow.
@@ -33,11 +35,13 @@ Use Python 3.12 and install FFmpeg/`ffprobe` if you will upload videos. Run comm
 from the repository root:
 
 ```sh
+git clone https://github.com/Brooker-Fam/instagram-publisher.git
+cd instagram-publisher
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install -c requirements.lock -e '.[dev]'
 python scripts/bootstrap-env.py
-uvicorn maple_publisher.app:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
+uvicorn instagram_publisher.app:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
 The bootstrap creates a private, ignored `.env` with random keys and demo mode enabled.
@@ -48,16 +52,16 @@ In a second terminal:
 
 ```sh
 . .venv/bin/activate
-python -m maple_publisher.worker
+python -m instagram_publisher.worker
 ```
 
 Open <http://127.0.0.1:8000/docs>. Read `ADMIN_API_KEY` privately in your editor and use
 **Authorize** to enter it as the Bearer credential. Do not print the environment file
 into logs or copy its secrets into an issue. The CLI reads the key from local settings.
 
-## Try the small-wins post
+## Try a sample post
 
-With the API running, this example uploads the supplied artwork and creates a
+With the API running, this example uploads `examples/assets/sample-feed.jpg` and creates a
 **draft only**. It does not approve, schedule, or publish:
 
 ```sh
@@ -65,18 +69,20 @@ python examples/demo.py --base-url http://localhost:8000
 ```
 
 Review the resulting post in `/docs`, then approve its current revision to try the
-demo worker. Confirm it finishes as `DEMO_PUBLISHED`. The examples include the feed
-and Story artwork under `examples/assets/`, plus `examples/small-wins-caption.txt`.
+demo worker. Confirm it finishes as `DEMO_PUBLISHED`. The examples include
+`examples/assets/sample-feed.jpg`, `examples/assets/sample-story.jpg`,
+`examples/caption.txt`, and a request template in `examples/draft.json`.
 
-The CLI can perform the same steps. Replace `POST_ID` and `N` with the reviewed values:
+The CLI can perform the same steps. After uploading, put the returned asset ID into
+`examples/draft.json`. Replace `POST_ID` and `N` with the reviewed values:
 
 ```sh
-python -m maple_publisher.cli status
-python -m maple_publisher.cli upload examples/assets/small-wins-feed.png --kind image
-python -m maple_publisher.cli draft path/to/draft.json
-python -m maple_publisher.cli review POST_ID
-python -m maple_publisher.cli approve POST_ID --revision N
-python -m maple_publisher.cli posts
+python -m instagram_publisher.cli status
+python -m instagram_publisher.cli upload examples/assets/sample-feed.jpg --kind image
+python -m instagram_publisher.cli draft examples/draft.json
+python -m instagram_publisher.cli review POST_ID
+python -m instagram_publisher.cli approve POST_ID --revision N
+python -m instagram_publisher.cli posts
 ```
 
 Other commands include `accounts`, `connect`, `cancel`, `retry`, `refresh`, and `events`.

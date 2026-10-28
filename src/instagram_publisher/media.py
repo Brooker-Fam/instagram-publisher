@@ -73,7 +73,7 @@ def _normalize_image(data: bytes, *, story: bool) -> tuple[bytes, int, int]:
                     raise MediaValidationError("Feed images must have an aspect ratio between 4:5 and 1.91:1.")
 
                 # Construct a fresh image to strip EXIF, GPS, comments, and ICC
-                # metadata. Flatten transparency to the Maple cream background.
+                # metadata. Flatten transparency to a neutral cream background.
                 rgba = oriented.convert("RGBA")
                 clean = Image.new("RGB", rgba.size, CREAM)
                 clean.paste(rgba, mask=rgba.getchannel("A"))
@@ -262,7 +262,7 @@ def store_upload(data: bytes, filename: str, directory: Path, kind: str) -> dict
         _require_fast_start(data)
         # Keep rejected uploads outside the public media directory and always
         # remove the temporary source, including on ffprobe errors/timeouts.
-        with tempfile.TemporaryDirectory(prefix="maple-video-") as temp_dir:
+        with tempfile.TemporaryDirectory(prefix="instagram-video-") as temp_dir:
             source = Path(temp_dir) / "source.mp4"
             source.write_bytes(data)
             width, height, duration = _probe_video(source, story=kind in _STORY_KINDS)
@@ -313,7 +313,7 @@ def sign_media_path(asset_id: str, expires: int, secret: str) -> str:
         raise ValueError("Expiration must be a positive Unix timestamp.")
     if not isinstance(secret, str) or len(secret.encode()) < 32:
         raise ValueError("Media signing secret must contain at least 32 bytes.")
-    payload = f"maple-media-v1\n{asset_id}\n{expires}".encode()
+    payload = f"instagram-media-v1\n{asset_id}\n{expires}".encode()
     return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
 
 

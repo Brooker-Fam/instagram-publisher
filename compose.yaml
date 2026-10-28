@@ -1,7 +1,7 @@
-name: maple-baby-publisher
+name: instagram-publisher
 
 x-service: &service
-  image: maple-baby-publisher:local
+  image: instagram-publisher:local
   build: .
   env_file: .env
   environment:
@@ -26,7 +26,7 @@ services:
       - "127.0.0.1:8000:8000"
   worker:
     <<: *service
-    command: ["python", "-m", "maple_publisher.worker"]
+    command: ["python", "-m", "instagram_publisher.worker"]
     depends_on:
       api:
         condition: service_healthy

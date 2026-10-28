@@ -1,4 +1,4 @@
-# Connect Maple Baby to Instagram
+# Connect a professional Instagram account
 
 The service starts in **demo mode**. Demo requests exercise the publishing workflow
 without sending content to Instagram. Meta connection setup and public HTTPS hosting
@@ -7,7 +7,7 @@ are separate from building the repository.
 ## What you need
 
 - A Meta developer account and an app configured for **Instagram API with Instagram Login**.
-- Access to Maple Baby's professional Instagram account. Use a **Business** account for
+- Access to the professional Instagram account you want to publish to. Use a **Business** account for
   this project's feed, Reel, and Story workflow; API support can differ by account type.
 - A stable HTTPS hostname for this service, for example `https://publisher.example.com`.
 - The Instagram app ID and secret from the Meta app dashboard. Store the secret in the
@@ -34,7 +34,7 @@ route or assume that a Facebook Page is linked.
    running service displays if your deployment is configured differently.
 4. Add the intended account/app role or Instagram test account using Meta's development
    setup, and accept any invitation in Instagram. The person completing login must be
-   authorized to manage Maple Baby's account.
+   authorized to manage the intended Instagram account.
 5. Configure these lifecycle callback URLs in the Meta app dashboard:
 
    ```text
@@ -97,7 +97,7 @@ with a separate database and upload volume for the live deployment.
    a token and stores the account connection. It encrypts the stored token with
    `TOKEN_ENCRYPTION_KEY`.
 5. Call `GET /api/accounts` and check the returned Instagram username and account ID
-   against Maple Baby's account.
+   against the account you intend to use.
 
 You never need to put your Instagram password into this service. Completing OAuth is
 the account owner's action; building this repository cannot complete it automatically.
@@ -116,11 +116,11 @@ asset without the administrator key.
 - Keep publishing, account-management, and upload endpoints protected by the service's
   administrator authentication.
 - Treat signed URLs as temporary bearer links. Anyone who has one can retrieve that
-  asset until it expires; do not put unrelated private family material in uploads.
+  asset until it expires; do not put unrelated private files in uploads.
 
-The assets generated in the conversation are concept artwork. Import only the files
-you have chosen for the connected Maple Baby account. A Reel needs an actual video;
-the Reel cover is only a still image.
+The supplied sample assets are for trying the demo workflow. For live publishing,
+upload the files you have chosen for the connected account. A Reel needs an actual
+video; its cover is only a still image.
 
 ## 5. Make one deliberate first post
 

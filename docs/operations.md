@@ -1,4 +1,4 @@
-# Operate Maple Baby Publisher
+# Operate Instagram Publisher
 
 ## Publishing expectations
 

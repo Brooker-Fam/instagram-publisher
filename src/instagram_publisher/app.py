@@ -16,8 +16,8 @@ from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import IntegrityError
 
-from maple_publisher.config import Settings
-from maple_publisher.db import (
+from instagram_publisher.config import Settings
+from instagram_publisher.db import (
     Account,
     Asset,
     AuditEvent,
@@ -28,17 +28,23 @@ from maple_publisher.db import (
     audit,
     make_session_factory,
 )
-from maple_publisher.guards import RequestGuard
-from maple_publisher.media import (
+from instagram_publisher.guards import RequestGuard
+from instagram_publisher.media import (
     MAX_VIDEO_BYTES,
     MediaValidationError,
     storage_path,
     store_upload,
     verify_media_signature,
 )
-from maple_publisher.meta import MetaClient, MetaError
-from maple_publisher.schemas import DraftUpdate, PostDraft, RevisionRequest
-from maple_publisher.security import decrypt_token, encrypt_token, media_url, state_digest, valid_admin_key
+from instagram_publisher.meta import MetaClient, MetaError
+from instagram_publisher.schemas import DraftUpdate, PostDraft, RevisionRequest
+from instagram_publisher.security import (
+    decrypt_token,
+    encrypt_token,
+    media_url,
+    state_digest,
+    valid_admin_key,
+)
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -125,7 +131,7 @@ def create_app(settings: Settings | None = None, session_factory=None, meta_clie
             client.close()
 
     app = FastAPI(
-        title="Maple Baby Publisher",
+        title="Instagram Publisher",
         description=(
             "Private Instagram publishing API. Upload media, create a draft, review its revision, "
             "then approve to queue it. The separate worker performs publishing. Demo mode never posts "
@@ -240,7 +246,7 @@ def create_app(settings: Settings | None = None, session_factory=None, meta_clie
         return HTMLResponse(
             "<!doctype html><html><head><title>Instagram connected</title></head><body>"
             f"<h1>Connected @{html.escape(username)}</h1>"
-            "<p>You can close this window and return to Maple Baby Publisher. Connecting does not publish any posts.</p>"
+            "<p>You can close this window and return to Instagram Publisher. Connecting does not publish any posts.</p>"
             "</body></html>"
         )
 
@@ -511,7 +517,7 @@ def create_app(settings: Settings | None = None, session_factory=None, meta_clie
             return result | {"resolved": bool(changed.rowcount), "post": post_dict(session.get(Post, post_id))}
 
     def lifecycle_callback(signed_request: str, kind: str):
-        from maple_publisher.lifecycle import verify_signed_request
+        from instagram_publisher.lifecycle import verify_signed_request
 
         if not settings.meta_app_secret.get_secret_value():
             raise HTTPException(503, "Instagram is not configured")

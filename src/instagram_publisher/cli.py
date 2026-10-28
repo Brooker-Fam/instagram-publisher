@@ -8,11 +8,11 @@ from urllib.parse import urlparse
 
 import httpx
 
-from maple_publisher.config import ClientSettings
+from instagram_publisher.config import ClientSettings
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Manage Maple Baby publishing drafts and schedules")
+    parser = argparse.ArgumentParser(description="Manage Instagram publishing drafts and schedules")
     parser.add_argument("--base-url", help="API origin (default: PUBLIC_BASE_URL)")
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("status", "accounts", "connect", "posts", "events"):

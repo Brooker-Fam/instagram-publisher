@@ -9,8 +9,8 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from sqlalchemy import select
 
-from maple_publisher.db import Account, AuditEvent, CallbackReceipt, Post
-from maple_publisher.meta import MetaError
+from instagram_publisher.db import Account, AuditEvent, CallbackReceipt, Post
+from instagram_publisher.meta import MetaError
 
 APP_SCOPED_ID = "998877665544"
 

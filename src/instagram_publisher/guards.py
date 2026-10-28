@@ -3,7 +3,7 @@
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
-from maple_publisher.security import valid_admin_key
+from instagram_publisher.security import valid_admin_key
 
 
 class RequestGuard:

@@ -2,7 +2,7 @@
   "kind": "IMAGE",
   "account_id": null,
   "asset_ids": ["REPLACE_WITH_UPLOADED_ASSET_ID"],
-  "caption": "Some days ask a lot of you.\n\nTaking a breath. Asking for help. Getting through the next thing.\n\nYour small wins matter, especially when everything feels big.\nWhat win are you giving yourself credit for today?\n\n#MapleBaby #SmallWins #ParentLife",
-  "alt_text": "Orange graphic with cream lettering: When everything feels big, your small wins matter. A cream maple leaf with a heart appears beside Maple Baby. Cream stars and a yellow arch with an orange heart decorate the graphic. maplebaby.app appears below.",
+  "caption": "Sample caption for a draft post.\n\nReplace this text and the sample image with your own content.",
+  "alt_text": "Neutral sample graphic with a slate-blue card on a light gray background. White text reads: Sample feed image, Draft workflow demo, and Replace with your own content.",
   "scheduled_at": null
 }

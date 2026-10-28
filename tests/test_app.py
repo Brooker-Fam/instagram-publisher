@@ -9,8 +9,8 @@ from conftest import TEST_META_TOKEN, TEST_REFRESHED_TOKEN
 from PIL import Image
 from sqlalchemy import select
 
-from maple_publisher.db import Account, Asset, OAuthState, Post
-from maple_publisher.security import decrypt_token, media_url, state_digest
+from instagram_publisher.db import Account, Asset, OAuthState, Post
+from instagram_publisher.security import decrypt_token, media_url, state_digest
 
 
 def image_bytes(size=(800, 1000)):
@@ -291,7 +291,7 @@ def test_oauth_state_is_hashed_single_use_and_tokens_are_encrypted(api_bundle):
     callback_url = "/auth/instagram/callback"
     response = api.client.get(callback_url, params={"state": state, "code": "test-auth-code"})
     assert response.status_code == 200
-    assert "Connected @maple_baby_test" in response.text
+    assert "Connected @publisher_test" in response.text
     assert TEST_META_TOKEN not in response.text
     assert api.client.get(callback_url, params={"state": state, "code": "test-auth-code"}).status_code == 400
     assert api.provider.exchanged_codes == ["test-auth-code"]

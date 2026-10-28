@@ -1,4 +1,4 @@
-"""Upload the supplied artwork and create a DEMO draft. Never approves or publishes."""
+"""Upload a neutral sample image and create a DEMO draft. Never approves or publishes."""
 
 import argparse
 import json
@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from maple_publisher.config import ClientSettings
+from instagram_publisher.config import ClientSettings
 
 
 def main():
@@ -28,8 +28,8 @@ def main():
         status.raise_for_status()
         if status.json()["mode"] != "demo":
             raise SystemExit("The example only runs against a server in demo mode.")
-        with (root / "assets/small-wins-feed.png").open("rb") as stream:
-            uploaded = client.post("/api/assets", data={"kind": "image"}, files={"file": ("small-wins.png", stream)})
+        with (root / "assets/sample-feed.jpg").open("rb") as stream:
+            uploaded = client.post("/api/assets", data={"kind": "image"}, files={"file": ("sample-feed.jpg", stream, "image/jpeg")})
         uploaded.raise_for_status()
         draft = json.loads((root / "draft.json").read_text())
         draft["asset_ids"] = [uploaded.json()["id"]]
@@ -37,7 +37,7 @@ def main():
         response.raise_for_status()
         post = response.json()
         print(f"Draft created: {post['id']} (revision {post['revision']}). Nothing was approved or published.")
-        print(f"Review: python -m maple_publisher.cli --base-url {args.base_url} review {post['id']}")
+        print(f"Review: python -m instagram_publisher.cli --base-url {args.base_url} review {post['id']}")
         print("Or open /docs, Authorize, and use GET /api/posts/{post_id}/review.")
 
 

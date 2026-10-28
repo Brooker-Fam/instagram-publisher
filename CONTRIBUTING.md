@@ -1,4 +1,4 @@
-# Contributing
+# Contributing to Instagram Publisher
 
 Follow the local setup in [README.md](README.md). Keep development and tests in demo
 mode, and use a separate test account for any explicitly authorized live verification.

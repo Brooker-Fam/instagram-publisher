@@ -11,11 +11,11 @@ from cryptography.fernet import Fernet
 from PIL import Image
 from sqlalchemy import select
 
-from maple_publisher.config import Settings
-from maple_publisher.db import Account, Asset, Post, make_session_factory
-from maple_publisher.meta import MetaError
-from maple_publisher.security import decrypt_token, encrypt_token
-from maple_publisher.worker import refresh_due_accounts, run_once
+from instagram_publisher.config import Settings
+from instagram_publisher.db import Account, Asset, Post, make_session_factory
+from instagram_publisher.meta import MetaError
+from instagram_publisher.security import decrypt_token, encrypt_token
+from instagram_publisher.worker import refresh_due_accounts, run_once
 
 
 class FakeMeta:
@@ -117,7 +117,7 @@ def context(tmp_path):
     with sessions() as session:
         account = Account(
             instagram_user_id="1001",
-            username="maple_baby_test",
+            username="publisher_test",
             account_type="BUSINESS",
             token_ciphertext=encrypt_token("test-access-token", settings.token_encryption_key.get_secret_value()),
             token_expires_at=time.time() + 3600,

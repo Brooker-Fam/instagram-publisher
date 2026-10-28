@@ -31,4 +31,4 @@ jobs:
       - name: Run tests without Meta credentials
         run: python -m pytest
       - name: Build runtime image
-        run: docker build --tag maple-baby-publisher:ci .
+        run: docker build --tag instagram-publisher:ci .

@@ -17,10 +17,10 @@ from cryptography.fernet import InvalidToken
 from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 
-from maple_publisher.config import Settings
-from maple_publisher.db import Account, Asset, Post, WorkerHeartbeat, audit, make_session_factory
-from maple_publisher.meta import MetaClient, MetaError
-from maple_publisher.security import decrypt_token, encrypt_token, media_url
+from instagram_publisher.config import Settings
+from instagram_publisher.db import Account, Asset, Post, WorkerHeartbeat, audit, make_session_factory
+from instagram_publisher.meta import MetaClient, MetaError
+from instagram_publisher.security import decrypt_token, encrypt_token, media_url
 
 logger = logging.getLogger(__name__)
 
@@ -504,7 +504,7 @@ def run_once(settings, session_factory, client=None, sleep=time.sleep, stop_even
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run Maple Baby's durable Instagram publishing queue")
+    parser = argparse.ArgumentParser(description="Run the durable Instagram publishing queue")
     parser.add_argument("--once", action="store_true", help="Process at most one due approved post and exit")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")

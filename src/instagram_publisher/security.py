@@ -22,7 +22,7 @@ def valid_admin_key(provided: str, expected: str) -> bool:
 
 
 def media_url(asset_id: str, settings, *, expires: int | None = None) -> str:
-    from maple_publisher.media import sign_media_path
+    from instagram_publisher.media import sign_media_path
 
     expires = expires or int(time.time()) + settings.media_url_ttl_seconds
     signature = sign_media_path(asset_id, expires, settings.media_signing_key.get_secret_value())

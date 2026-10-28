@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 
-from maple_publisher.media import (
+from instagram_publisher.media import (
     CREAM,
     MAX_IMAGE_BYTES,
     MediaValidationError,
@@ -87,7 +87,7 @@ def test_rejects_large_input_before_decoding(tmp_path):
 
 
 def test_rejects_decompression_bomb_before_loading(tmp_path, monkeypatch):
-    monkeypatch.setattr("maple_publisher.media.MAX_IMAGE_PIXELS", 100)
+    monkeypatch.setattr("instagram_publisher.media.MAX_IMAGE_PIXELS", 100)
     with pytest.raises(MediaValidationError, match="25 million"):
         store_upload(picture(), "bomb.png", tmp_path, "image")
 
@@ -169,7 +169,7 @@ def test_fast_start_parser_accepts_regular_extended_and_eof_boxes(data):
 def test_fast_start_parser_rejects_bad_order_and_malformed_boxes_before_probe(tmp_path, monkeypatch, data):
     def forbidden(*args, **kwargs):
         raise AssertionError("Invalid atom structure must be rejected before spawning ffprobe")
-    monkeypatch.setattr("maple_publisher.media.subprocess.run", forbidden)
+    monkeypatch.setattr("instagram_publisher.media.subprocess.run", forbidden)
     with pytest.raises(MediaValidationError):
         store_upload(data, "reel.mp4", tmp_path, "reel")
     assert list(tmp_path.iterdir()) == []
@@ -184,7 +184,7 @@ def mock_probe(monkeypatch, probe):
         assert Path(args[-1]).read_bytes() == MP4
         kwargs["stdout"].write(json.dumps(probe).encode())
         return SimpleNamespace(returncode=0)
-    monkeypatch.setattr("maple_publisher.media.subprocess.run", run)
+    monkeypatch.setattr("instagram_publisher.media.subprocess.run", run)
 
 
 def test_valid_mp4_persisted_only_after_inspection(tmp_path, monkeypatch):
@@ -231,7 +231,7 @@ def test_infinite_duration_rejected(tmp_path, monkeypatch):
 def test_missing_ffprobe_is_actionable(tmp_path, monkeypatch):
     def missing(*args, **kwargs):
         raise FileNotFoundError
-    monkeypatch.setattr("maple_publisher.media.subprocess.run", missing)
+    monkeypatch.setattr("instagram_publisher.media.subprocess.run", missing)
     with pytest.raises(MediaValidationError, match="install ffmpeg"):
         store_upload(MP4, "video.mp4", tmp_path, "reel")
 
@@ -240,7 +240,7 @@ def test_ffprobe_timeout_is_bounded(tmp_path, monkeypatch):
     import subprocess
     def timeout(*args, **kwargs):
         raise subprocess.TimeoutExpired("ffprobe", 20)
-    monkeypatch.setattr("maple_publisher.media.subprocess.run", timeout)
+    monkeypatch.setattr("instagram_publisher.media.subprocess.run", timeout)
     with pytest.raises(MediaValidationError, match="time limit"):
         store_upload(MP4, "video.mp4", tmp_path, "reel")
 

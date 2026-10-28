@@ -9,7 +9,7 @@ Checked on 2026-10-28 in the development workspace:
 - Ruff checks pass and `pip check` reports no broken requirements.
 - The Docker image builds with the committed dependency constraints.
 - Docker Compose starts the API as healthy and the worker reports a current heartbeat.
-- A local end-to-end run uploaded the supplied small-wins PNG, retrieved the normalized
+- A local end-to-end run uploaded a PNG image, retrieved the normalized
   JPEG through its signed preview, created/reviewed/approved a draft, and completed it
   as `DEMO_PUBLISHED` with no Instagram media ID.
 - FFmpeg/FFprobe validation was checked with an actual 3-second H.264 fast-start MP4.

@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from maple_publisher.lifecycle import (
+from instagram_publisher.lifecycle import (
     MAX_SIGNED_REQUEST_LENGTH,
     SignedRequestError,
     verify_signed_request,

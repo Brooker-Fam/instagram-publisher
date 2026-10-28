@@ -1,8 +1,9 @@
 # Run the publisher
 
-The default configuration is a single-owner service: one API process, one worker, and
-a shared SQLite database and media directory. It is intended for Maple Baby's own
-account. It is not a multi-tenant SaaS or an infinitely scalable queue.
+The default configuration is a self-hosted, single-owner service: one API process,
+one worker, and a shared SQLite database and media directory. The administrator can
+connect the professional Instagram accounts they manage. This deployment model does
+not provide multi-tenant isolation or a distributed queue.
 
 ## Local development
 
@@ -14,13 +15,13 @@ python -m venv .venv
 . .venv/bin/activate
 python -m pip install -c requirements.lock -e '.[dev]'
 python scripts/bootstrap-env.py
-uvicorn maple_publisher.app:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
+uvicorn instagram_publisher.app:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
 In a second terminal with the same virtual environment and working directory:
 
 ```sh
-python -m maple_publisher.worker
+python -m instagram_publisher.worker
 ```
 
 The API and worker must use the same environment file, database, media directory, and
@@ -38,7 +39,7 @@ protected service status, while `GET /healthz` is a minimal public health check.
 For a single queue pass instead of a persistent worker, run:
 
 ```sh
-python -m maple_publisher.worker --once
+python -m instagram_publisher.worker --once
 ```
 
 ## Docker Compose
@@ -121,7 +122,7 @@ environment supplies a combined CA bundle, mount it only for the build:
 
 ```sh
 docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt \
-  --tag maple-baby-publisher:local .
+  --tag instagram-publisher:local .
 docker compose up --no-build -d
 ```
 

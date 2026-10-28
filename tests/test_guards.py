@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from starlette.exceptions import HTTPException
 
-from maple_publisher.guards import RequestGuard
+from instagram_publisher.guards import RequestGuard
 
 ADMIN_KEY = "test-admin-key-with-at-least-thirty-two-characters"
 
