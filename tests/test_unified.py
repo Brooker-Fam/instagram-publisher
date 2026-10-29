@@ -96,6 +96,19 @@ def draft(api, account_id, **extra):
     return result.json()["id"]
 
 
+def test_import_uses_debug_token_identity_when_me_omits_id(api_bundle):
+    payloads = responses()
+    payloads["/v26.0/me"] = {"client_business_id": "8001"}
+    provider, _ = install_provider(api_bundle, payloads)
+    response = import_account(api_bundle)
+    assert response.status_code == 200
+    with api_bundle.sessions() as session:
+        account = session.get(Account, response.json()["id"])
+        assert account.unified_grant.system_user_id == "7001"
+        assert account.unified_grant.business_id == "8001"
+    provider.close()
+
+
 def test_import_stores_grant_separately_and_never_returns_credentials(api_bundle):
     provider, calls = install_provider(api_bundle)
     response = import_account(api_bundle)

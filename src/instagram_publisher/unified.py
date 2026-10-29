@@ -53,7 +53,7 @@ class UnifiedMetaClient(MetaClient):
         identity = self._request(
             "GET", f"{self.base_url}/me", token=token, params={"fields": "id,client_business_id"}
         )
-        if self._object_id(identity.get("id")) != grant["system_user_id"]:
+        if "id" in identity and self._object_id(identity["id"]) != grant["system_user_id"]:
             raise MetaError("Meta returned inconsistent system-user identities.")
         grant["business_id"] = self._object_id(identity.get("client_business_id"))
         return grant
